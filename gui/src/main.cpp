@@ -19,6 +19,7 @@ int main(int argc, char *argv[]) { return real_main(argc, argv); }
 #include <controllermanager.h>
 #include <discoverymanager.h>
 #include <qmlmainwindow.h>
+#include <tap.h>
 #include <QApplication>
 #include <QtTypes>
 
@@ -142,6 +143,7 @@ int real_main(int argc, char *argv[])
 	QtWebEngineQuick::initialize();
 #endif
 	QApplication app(argc, argv);
+	ChiakiTap::Init(); // listens on CHIAKI_TAP_SOCK, if set
 
 #ifdef Q_OS_MACOS
 	QGuiApplication::setWindowIcon(QIcon(":/icons/chiaking_macos.svg"));
