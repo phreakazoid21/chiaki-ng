@@ -3,6 +3,7 @@
 #include <streamsession.h>
 #include <settings.h>
 #include <controllermanager.h>
+#include <tap.h>
 
 #include <chiaki/base64.h>
 #include <chiaki/streamconnection.h>
@@ -713,6 +714,7 @@ StreamSession::StreamSession(const StreamSessionConnectInfo &connect_info, QObje
 
 StreamSession::~StreamSession()
 {
+	ChiakiTap::SessionStopped(); // when deleted without a quit event; a no-op otherwise
 	mic_active.storeRelaxed(false);
 	StopAudioOutDrainThread();
 	if(audio_out)
@@ -1317,6 +1319,7 @@ void StreamSession::DpadSendFeedbackState()
 			dpad_touch_stop_timer->start(NEW_DPAD_TOUCH_INTERVAL_MS);
 	}
 	chiaki_controller_state_or(&state, &state, &dpad_touch_state);
+	ChiakiTap::OfferInput(state);
 	chiaki_session_set_controller_state(&session, &state);
 }
 
@@ -1373,6 +1376,7 @@ void StreamSession::SendFeedbackState()
 			dpad_touch_stop_timer->start(NEW_DPAD_TOUCH_INTERVAL_MS);
 	}
 	chiaki_controller_state_or(&state, &state, &dpad_touch_state);
+	ChiakiTap::OfferInput(state);
 	chiaki_session_set_controller_state(&session, &state);
 }
 
@@ -2387,6 +2391,7 @@ void StreamSession::Event(ChiakiEvent *event)
 		case CHIAKI_EVENT_CONNECTED:
 			connect_timer.invalidate();
 			connected = true;
+			ChiakiTap::SessionStarted(session.connect_info.video_profile.width, session.connect_info.video_profile.height);
 			emit ConnectedChanged();
 			break;
 		case CHIAKI_EVENT_QUIT:
@@ -2395,6 +2400,7 @@ void StreamSession::Event(ChiakiEvent *event)
 				QTimer::singleShot(SESSION_RETRY_SECONDS / 3, this, &StreamSession::Start);
 				return;
 			}
+			ChiakiTap::SessionStopped();
 			connected = false;
 			emit ConnectedChanged();
 			emit SessionQuit(event->quit.reason, event->quit.reason_str ? QString::fromUtf8(event->quit.reason_str) : QString());

@@ -54,6 +54,8 @@ set(SOURCE_FILES
 	src/qmlsvgprovider.cpp
 	include/systemdinhibit.h
 	src/systemdinhibit.cpp
+	include/tap.h
+	src/tap.cpp
 	)
 set(RESOURCE_FILES "")
 
@@ -137,6 +139,16 @@ if(CHIAKI_ENABLE_STEAM_SHORTCUT)
 endif()
 if(NOT CHIAKI_ENABLE_FFMPEG_DECODER)
 	message(FATAL_ERROR "Chiaki GUI requires CHIAKI_ENABLE_FFMPEG_DECODER=ON")
+endif()
+# The frame/input tap (doc/tap.md) converts frames with libswscale, which some
+# of the bundled FFmpeg builds leave out; without it the tap is compiled out.
+find_package(FFMPEG COMPONENTS swscale)
+if(TARGET FFMPEG::swscale AND NOT WIN32)
+	target_link_libraries(chiaki FFMPEG::swscale)
+	target_compile_definitions(chiaki PRIVATE CHIAKI_GUI_ENABLE_TAP)
+	message(STATUS "Frame/input tap enabled")
+else()
+	message(STATUS "Frame/input tap disabled (needs libswscale and POSIX sockets)")
 endif()
 if(APPLE)
 	target_link_libraries(chiaki "-framework AVFoundation" "-framework IOKit")
