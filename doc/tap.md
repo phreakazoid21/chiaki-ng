@@ -135,7 +135,13 @@ Notes for clients:
 
 ## Building on macOS
 
-These steps built the fork's `chiaki` target on Apple silicon with Homebrew's
+`scripts/build-macos-local.sh` does all of this. It checks the Homebrew
+formulas (`--install` installs missing ones) and builds `build/gui/chiaki.app`.
+Its own helpers (a Python virtualenv, a copy of openssl@3's headers, and
+libplacebo if Homebrew's isn't installed) go in
+`~/Library/Caches/chiaki-ng-build`. `--help` lists the options.
+
+The manual steps, for reference: these built the fork's `chiaki` target on Apple silicon with Homebrew's
 Qt 6.11, FFmpeg 9.0 and protobuf 36, and Xcode's clang 21. libplacebo 7.387
 was built from source; Homebrew's `libplacebo` formula is what the CI uses
 instead. `.github/workflows/build-macos-arm.yml` is the reference for a
@@ -168,12 +174,16 @@ Two things that break this build:
 
 * **OpenSSL 4.** If Homebrew has OpenSSL 4 linked, its headers in
   `/opt/homebrew/include` shadow openssl@3's. The bundled curl then fails in
-  `vtls/openssl.c` with `incomplete definition of type 'ASN1_INTEGER'`. Run
-  `brew unlink openssl@4`, as the CI does. If you'd rather keep it linked,
-  copy openssl@3's `include/openssl` into a directory of your own and put
-  that first in `CPATH`. Adding openssl@3's own include directory to `CPATH`
-  doesn't work, because clang drops a `CPATH` entry that repeats an
-  `-isystem` one.
+  `vtls/openssl.c` with `incomplete definition of type 'ASN1_INTEGER'`.
+  Worse, chiaki-lib compiles against OpenSSL 4 and links openssl@3, which
+  fails with undefined `OPENSSL_sk_set_*_thunks` (or links by luck, with
+  mismatched headers). Run `brew unlink openssl@4`, as the CI does. To keep
+  it linked, do what `scripts/build-macos-local.sh` does: copy openssl@3's
+  `include/openssl` into a directory of your own, and put that directory
+  before every target's includes with `-DCMAKE_PROJECT_INCLUDE` pointing at a
+  file that says `include_directories(BEFORE "<dir>")`. `CPATH` isn't enough:
+  several dependencies put `-I/opt/homebrew/include` on the command line,
+  which comes first.
 * **nanopb.** `VersionError: Detected incompatible Protobuf Gencode/Runtime
   versions` means the Python protobuf is older than `protoc`. Use the venv
   above, and make sure CMake picked it (`-DPython_EXECUTABLE`).
